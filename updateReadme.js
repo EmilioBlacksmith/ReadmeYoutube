@@ -1,8 +1,8 @@
-const fs = require("fs");
-const fetch = require("node-fetch");
+import fs from "fs";
+import fetch from "node-fetch";
 
-const YOUTUBE_CHANNEL_ID = "YOUR_CHANNEL_ID";
-const API_KEY = "YOUR_YOUTUBE_API_KEY";
+const YOUTUBE_CHANNEL_ID = process.env.YOUTUBE_CHANNEL_ID;
+const API_KEY = process.env.YOUTUBE_API_KEY;
 const README_FILE_PATH = "./README.md";
 
 async function getLatestVideos() {
