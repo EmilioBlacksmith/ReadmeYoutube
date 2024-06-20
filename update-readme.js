@@ -85,6 +85,13 @@ async function updateReadme() {
 		// Stage README.md for commit
 		execSync("git add README.md");
 
+		// Check if there are changes to commit
+		const status = execSync("git status --porcelain").toString().trim();
+		if (status.length === 0) {
+			console.log("No changes to commit.");
+			return;
+		}
+
 		// Commit changes
 		execSync('git commit -m "Update README with latest YouTube videos"');
 
