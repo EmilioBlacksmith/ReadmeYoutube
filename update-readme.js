@@ -1,6 +1,5 @@
 import fs from "fs";
 import fetch from "node-fetch";
-import { execSync } from "child_process";
 
 const YOUTUBE_CHANNEL_ID = process.env.YOUTUBE_CHANNEL_ID;
 const API_KEY = process.env.YOUTUBE_API_KEY;
@@ -53,16 +52,12 @@ async function getLatestVideos() {
 		}));
 	} catch (error) {
 		console.error("Error fetching YouTube videos:", error.message);
-		throw error; // Rethrow the error to stop execution
+		throw error;
 	}
 }
 
 async function updateReadme() {
 	try {
-		// Configure Git user identity
-		execSync('git config --global user.email "actions@github.com"');
-		execSync('git config --global user.name "GitHub Actions"');
-
 		const videos = await getLatestVideos();
 		const readmeContent = fs.readFileSync(README_FILE_PATH, "utf-8");
 
@@ -82,24 +77,14 @@ async function updateReadme() {
 
 		fs.writeFileSync(README_FILE_PATH, newContent);
 
-		// Stage README.md for commit
-		execSync("git add README.md");
-
-		// Check if there are changes to commit
-		const status = execSync("git status --porcelain").toString().trim();
-		if (status.length === 0) {
-			console.log("No changes to commit.");
-			return;
-		}
-
-		// Commit changes
-		execSync('git commit -m "Update README with latest YouTube videos"');
-
-		console.log("Changes committed successfully!");
+		console.log("README.md updated successfully!");
 	} catch (error) {
 		console.error("Error updating README:", error);
-		throw error; // Rethrow the error to stop execution
+		throw error;
 	}
 }
 
-updateReadme().catch((err) => console.error(err));
+updateReadme().catch((err) => {
+	console.error(err);
+	process.exit(1);
+});
