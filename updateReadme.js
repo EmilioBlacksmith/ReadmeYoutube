@@ -5,15 +5,37 @@ const YOUTUBE_CHANNEL_ID = process.env.YOUTUBE_CHANNEL_ID;
 const API_KEY = process.env.YOUTUBE_API_KEY;
 const README_FILE_PATH = "./README.md";
 
-async function getLatestVideos() {
-	const url = `https://www.googleapis.com/youtube/v3/search?key=${API_KEY}&channelId=${YOUTUBE_CHANNEL_ID}&part=snippet,id&order=date&maxResults=9`;
+async function getVideoDetails(videoIds) {
+	const url = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${videoIds.join(
+		","
+	)}&key=${API_KEY}`;
 	const response = await fetch(url);
 	const data = await response.json();
 	return data.items.map((item) => ({
-		title: item.snippet.title,
-		url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
-		thumbnail: item.snippet.thumbnails.medium.url,
+		id: item.id,
+		duration: item.contentDetails.duration,
+		isShort:
+			item.contentDetails.definition === "vertical" ||
+			item.contentDetails.duration.startsWith("PT0M"),
 	}));
+}
+
+async function getLatestVideos() {
+	const url = `https://www.googleapis.com/youtube/v3/search?key=${API_KEY}&channelId=${YOUTUBE_CHANNEL_ID}&part=snippet,id&order=date&maxResults=15`;
+	const response = await fetch(url);
+	const data = await response.json();
+
+	const videoIds = data.items.map((item) => item.id.videoId);
+	const videoDetails = await getVideoDetails(videoIds);
+
+	return data.items
+		.filter((item, index) => !videoDetails[index].isShort)
+		.slice(0, 9)
+		.map((item, index) => ({
+			title: item.snippet.title,
+			url: `https://www.youtube.com/watch?v=${videoDetails[index].id}`,
+			thumbnail: item.snippet.thumbnails.medium.url,
+		}));
 }
 
 async function updateReadme() {
