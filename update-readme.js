@@ -59,6 +59,10 @@ async function getLatestVideos() {
 
 async function updateReadme() {
 	try {
+		// Configure Git user identity
+		execSync('git config --global user.email "actions@github.com"');
+		execSync('git config --global user.name "GitHub Actions"');
+
 		const videos = await getLatestVideos();
 		const readmeContent = fs.readFileSync(README_FILE_PATH, "utf-8");
 
