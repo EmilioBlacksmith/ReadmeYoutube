@@ -2,10 +2,10 @@
 	"name": "ReadmeYoutube",
 	"version": "1.0.0",
 	"description": "",
-	"main": "updateReadme.js",
+	"main": "update-readme.js",
 	"type": "module",
 	"scripts": {
-		"update-readme": "node updateReadme.js"
+		"update-readme": "node update-readme.js"
 	},
 	"dependencies": {
 		"node-fetch": "^3.0.0"
