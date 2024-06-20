@@ -1,5 +1,6 @@
 import fs from "fs";
 import fetch from "node-fetch";
+import { execSync } from "child_process";
 
 const YOUTUBE_CHANNEL_ID = process.env.YOUTUBE_CHANNEL_ID;
 const API_KEY = process.env.YOUTUBE_API_KEY;
@@ -60,6 +61,14 @@ async function updateReadme() {
 	);
 
 	fs.writeFileSync(README_FILE_PATH, newContent);
+
+	// Stage README.md for commit
+	execSync("git add README.md");
+
+	// Commit changes
+	execSync('git commit -m "Update README with latest YouTube videos"');
+
+	console.log("Changes committed successfully!");
 }
 
 updateReadme().catch((err) => console.error(err));
