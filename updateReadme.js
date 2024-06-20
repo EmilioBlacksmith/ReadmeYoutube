@@ -11,13 +11,25 @@ async function getVideoDetails(videoIds) {
 	)}&key=${API_KEY}`;
 	const response = await fetch(url);
 	const data = await response.json();
-	return data.items.map((item) => ({
-		id: item.id,
-		duration: item.contentDetails.duration,
-		isShort:
-			item.contentDetails.definition === "vertical" ||
-			item.contentDetails.duration.startsWith("PT0M"),
-	}));
+
+	return data.items.map((item) => {
+		const duration = item.contentDetails.duration;
+
+		const match = duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
+		const hours = parseInt(match[1]) || 0;
+		const minutes = parseInt(match[2]) || 0;
+		const seconds = parseInt(match[3]) || 0;
+		const totalSeconds = hours * 3600 + minutes * 60 + seconds;
+
+		const isVertical = item.contentDetails.definition === "vertical";
+		const isShort = totalSeconds < 60 && isVertical;
+
+		return {
+			id: item.id,
+			duration: item.contentDetails.duration,
+			isShort,
+		};
+	});
 }
 
 async function getLatestVideos() {
