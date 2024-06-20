@@ -24,6 +24,9 @@ jobs:
         run: npm install
 
       - name: Run script to update README
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID }}
         run: node update-readme.js
 
       - name: Commit changes to README

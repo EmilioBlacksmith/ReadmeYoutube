@@ -2,11 +2,10 @@ import fetch from "node-fetch";
 import dotenv from "dotenv";
 import fs from "fs";
 
-// Load environment variables
 dotenv.config();
 
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
-const YOUTUBE_CHANNEL_ID = process.env.YOUTUBE_CHANNEL_ID; // Replace with your YouTube channel ID
+const YOUTUBE_CHANNEL_ID = process.env.YOUTUBE_CHANNEL_ID;
 
 async function getLatestVideos() {
 	try {
@@ -47,7 +46,6 @@ async function getLatestVideos() {
 	}
 }
 
-// Function to parse YouTube video duration in ISO 8601 format to seconds
 function parseDuration(duration) {
 	const match = duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
 	const hours = parseInt(match[1]) || 0;
@@ -60,12 +58,12 @@ async function updateREADME(videos) {
 	try {
 		const videoLinks = videos
 			.map((video, index) => {
-				const title = video.snippet.title.replace(/"/g, '\\"'); // Escape double quotes in title
+				const title = video.snippet.title.replace(/"/g, '\\"');
 				const thumbnail = video.snippet.thumbnails.medium.url;
 				const videoUrl = `https://www.youtube.com/watch?v=${video.id.videoId}`;
 				return `[![${title}](${thumbnail})](${videoUrl})`;
 			})
-			.join(""); // Join videos without adding line breaks
+			.join("");
 
 		// Read current README.md content
 		let readmeContent = fs.readFileSync("./README.md", "utf-8");
@@ -86,7 +84,6 @@ async function updateREADME(videos) {
 	}
 }
 
-// Function to fetch latest videos and update README
 async function main() {
 	try {
 		const latestVideos = await getLatestVideos();
@@ -97,5 +94,4 @@ async function main() {
 	}
 }
 
-// Execute main function
 main();
