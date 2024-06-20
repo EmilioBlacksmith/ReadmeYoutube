@@ -2,7 +2,7 @@ name: Update README with YouTube Videos
 
 on:
   schedule:
-    - cron: "0 0 * * 0"
+    - cron: "0 0 * * 0" # Runs at midnight on Sundays (weekly)
   workflow_dispatch:
 
 jobs:
@@ -27,14 +27,16 @@ jobs:
         run: node update-readme.js
 
       - name: Commit and push changes
+        id: commit
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add README.md
           git diff --quiet && git diff --staged --quiet || git commit -m "Update README with latest YouTube videos"
+          echo "COMMIT_STATUS=$?" >> $GITHUB_ENV
 
       - name: Push changes
-        if: success()
+        if: env.COMMIT_STATUS != 0
         uses: ad-m/github-push-action@master
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
