@@ -1,90 +1,101 @@
-import fs from "fs";
 import fetch from "node-fetch";
+import dotenv from "dotenv";
+import fs from "fs";
 
-const YOUTUBE_CHANNEL_ID = process.env.YOUTUBE_CHANNEL_ID;
-const API_KEY = process.env.YOUTUBE_API_KEY;
-const README_FILE_PATH = "./README.md";
+// Load environment variables
+dotenv.config();
+
+const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
+const YOUTUBE_CHANNEL_ID = process.env.YOUTUBE_CHANNEL_ID; // Replace with your YouTube channel ID
 
 async function getLatestVideos() {
 	try {
-		const url = `https://www.googleapis.com/youtube/v3/search?key=${API_KEY}&channelId=${YOUTUBE_CHANNEL_ID}&part=snippet,id&order=date&maxResults=15`;
+		// Fetch videos from the channel sorted by upload date (latest videos first)
+		const url = `https://www.googleapis.com/youtube/v3/search?key=${YOUTUBE_API_KEY}&channelId=${YOUTUBE_CHANNEL_ID}&part=snippet,id&order=viewCount&maxResults=15`;
 		const response = await fetch(url);
 		if (!response.ok) {
 			throw new Error(
-				`Failed to fetch YouTube videos: ${response.status} ${response.statusText}`
+				`Failed to fetch latest YouTube videos: ${response.status} ${response.statusText}`
 			);
 		}
 		const data = await response.json();
 
-		// Fetch video details to determine if they are Shorts
-		const videoDetailsPromises = data.items.map(async (item) => {
-			const videoId = item.id.videoId;
-			const videoUrl = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${videoId}&key=${API_KEY}`;
-			const videoResponse = await fetch(videoUrl);
-			if (!videoResponse.ok) {
-				throw new Error(
-					`Failed to fetch video details for ${videoId}: ${videoResponse.status} ${videoResponse.statusText}`
-				);
-			}
-			const videoData = await videoResponse.json();
-			const duration = videoData.items[0].contentDetails.duration;
-			const isShort =
-				duration.startsWith("PT") &&
-				(duration.includes("S") || duration.includes("M"));
+		// Extract video ids
+		const videoIds = data.items.map((item) => item.id.videoId).join(",");
 
-			return {
-				...item,
-				isShort,
-			};
+		// Fetch video details to get durations
+		const videoDetailsUrl = `https://www.googleapis.com/youtube/v3/videos?key=${YOUTUBE_API_KEY}&id=${videoIds}&part=contentDetails`;
+		const videoDetailsResponse = await fetch(videoDetailsUrl);
+		if (!videoDetailsResponse.ok) {
+			throw new Error(
+				`Failed to fetch video details: ${videoDetailsResponse.status} ${videoDetailsResponse.statusText}`
+			);
+		}
+		const videoDetailsData = await videoDetailsResponse.json();
+
+		// Filter out videos with duration less than 1 minute (60 seconds)
+		const filteredVideos = data.items.filter((item, index) => {
+			const duration = videoDetailsData.items[index].contentDetails.duration;
+			const durationInSeconds = parseDuration(duration);
+			return durationInSeconds >= 60; // Filter videos with duration >= 60 seconds
 		});
 
-		const videoDetails = await Promise.all(videoDetailsPromises);
-
-		// Filter out Shorts
-		const filteredVideos = videoDetails
-			.filter((item) => !item.isShort)
-			.slice(0, 9);
-
-		return filteredVideos.map((item) => ({
-			title: item.snippet.title,
-			url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
-			thumbnail: item.snippet.thumbnails.medium.url,
-		}));
+		return filteredVideos;
 	} catch (error) {
-		console.error("Error fetching YouTube videos:", error.message);
+		console.error("Error fetching latest YouTube videos:", error.message);
 		throw error;
 	}
 }
 
-async function updateReadme() {
+// Function to parse YouTube video duration in ISO 8601 format to seconds
+function parseDuration(duration) {
+	const match = duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
+	const hours = parseInt(match[1]) || 0;
+	const minutes = parseInt(match[2]) || 0;
+	const seconds = parseInt(match[3]) || 0;
+	return hours * 3600 + minutes * 60 + seconds;
+}
+
+async function updateREADME(videos) {
 	try {
-		const videos = await getLatestVideos();
-		const readmeContent = fs.readFileSync(README_FILE_PATH, "utf-8");
-
-		const newVideosMarkdown = videos
-			.map((video) => {
-				return `
-<a href="${video.url}" target="_blank">
-  <img src="${video.thumbnail}" alt="${video.title}" width="200" />
-</a>`;
+		const videoLinks = videos
+			.map((video, index) => {
+				const title = video.snippet.title.replace(/"/g, '\\"'); // Escape double quotes in title
+				const thumbnail = video.snippet.thumbnails.medium.url;
+				const videoUrl = `https://www.youtube.com/watch?v=${video.id.videoId}`;
+				return `[![${title}](${thumbnail})](${videoUrl})`;
 			})
-			.join("\n");
+			.join(""); // Join videos without adding line breaks
 
-		const newContent = readmeContent.replace(
-			/<!-- YOUTUBE-VIDEOS:START -->([\s\S]*?)<!-- YOUTUBE-VIDEOS:END -->/,
-			`<!-- YOUTUBE-VIDEOS:START -->\n${newVideosMarkdown}\n<!-- YOUTUBE-VIDEOS:END -->`
+		// Read current README.md content
+		let readmeContent = fs.readFileSync("./README.md", "utf-8");
+
+		// Replace existing latest videos section or add if not present
+		readmeContent = readmeContent.replace(
+			/<!-- YOUTUBE-LATEST-VIDEOS:START -->([\s\S]*?)<!-- YOUTUBE-LATEST-VIDEOS:END -->/,
+			`<!-- YOUTUBE-LATEST-VIDEOS:START -->\n\n${videoLinks}\n\n<!-- YOUTUBE-LATEST-VIDEOS:END -->`
 		);
 
-		fs.writeFileSync(README_FILE_PATH, newContent);
+		// Write updated content back to README.md
+		fs.writeFileSync("./README.md", readmeContent);
 
-		console.log("README.md updated successfully!");
+		console.log("README.md updated successfully with latest videos!");
 	} catch (error) {
-		console.error("Error updating README:", error);
+		console.error("Error updating README.md:", error);
 		throw error;
 	}
 }
 
-updateReadme().catch((err) => {
-	console.error(err);
-	process.exit(1);
-});
+// Function to fetch latest videos and update README
+async function main() {
+	try {
+		const latestVideos = await getLatestVideos();
+		await updateREADME(latestVideos);
+	} catch (error) {
+		console.error("Failed to update README.md with latest videos:", error);
+		process.exit(1);
+	}
+}
+
+// Execute main function
+main();
