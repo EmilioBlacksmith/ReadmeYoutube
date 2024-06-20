@@ -68,9 +68,24 @@ async function updateREADME(videos) {
 		// Read current README.md content
 		let readmeContent = fs.readFileSync("./README.md", "utf-8");
 
+		// Regex pattern to find existing video links section
+		const pattern =
+			/<!-- YOUTUBE-LATEST-VIDEOS:START -->([\s\S]*?)<!-- YOUTUBE-LATEST-VIDEOS:END -->/;
+		const existingLinksMatch = readmeContent.match(pattern);
+
+		if (existingLinksMatch && existingLinksMatch.length > 0) {
+			const existingVideoLinks = existingLinksMatch[1].trim();
+
+			// Compare current and existing video links
+			if (existingVideoLinks === videoLinks.trim()) {
+				console.log("No new videos to update in README.md");
+				return; // Exit function early if no changes
+			}
+		}
+
 		// Replace existing latest videos section or add if not present
 		readmeContent = readmeContent.replace(
-			/<!-- YOUTUBE-LATEST-VIDEOS:START -->([\s\S]*?)<!-- YOUTUBE-LATEST-VIDEOS:END -->/,
+			pattern,
 			`<!-- YOUTUBE-LATEST-VIDEOS:START -->\n\n${videoLinks}\n\n<!-- YOUTUBE-LATEST-VIDEOS:END -->`
 		);
 
