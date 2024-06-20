@@ -5,49 +5,40 @@ const YOUTUBE_CHANNEL_ID = process.env.YOUTUBE_CHANNEL_ID;
 const API_KEY = process.env.YOUTUBE_API_KEY;
 const README_FILE_PATH = "./README.md";
 
-async function getVideoDetails(videoIds) {
-	const url = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${videoIds.join(
-		","
-	)}&key=${API_KEY}`;
-	const response = await fetch(url);
-	const data = await response.json();
-
-	return data.items.map((item) => {
-		const duration = item.contentDetails.duration;
-
-		const match = duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
-		const hours = parseInt(match[1]) || 0;
-		const minutes = parseInt(match[2]) || 0;
-		const seconds = parseInt(match[3]) || 0;
-		const totalSeconds = hours * 3600 + minutes * 60 + seconds;
-
-		const isVertical = item.contentDetails.definition === "vertical";
-		const isShort = totalSeconds < 60 && isVertical;
-
-		return {
-			id: item.id,
-			duration: item.contentDetails.duration,
-			isShort,
-		};
-	});
-}
-
 async function getLatestVideos() {
 	const url = `https://www.googleapis.com/youtube/v3/search?key=${API_KEY}&channelId=${YOUTUBE_CHANNEL_ID}&part=snippet,id&order=date&maxResults=15`;
 	const response = await fetch(url);
 	const data = await response.json();
 
-	const videoIds = data.items.map((item) => item.id.videoId);
-	const videoDetails = await getVideoDetails(videoIds);
+	// Fetch video details to determine if they are Shorts
+	const videoDetailsPromises = data.items.map(async (item) => {
+		const videoId = item.id.videoId;
+		const videoUrl = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${videoId}&key=${API_KEY}`;
+		const videoResponse = await fetch(videoUrl);
+		const videoData = await videoResponse.json();
+		const duration = videoData.items[0].contentDetails.duration;
+		const isShort =
+			duration.startsWith("PT") &&
+			(duration.includes("S") || duration.includes("M"));
 
-	return data.items
-		.filter((item, index) => !videoDetails[index].isShort)
-		.slice(0, 9)
-		.map((item, index) => ({
-			title: item.snippet.title,
-			url: `https://www.youtube.com/watch?v=${videoDetails[index].id}`,
-			thumbnail: item.snippet.thumbnails.medium.url,
-		}));
+		return {
+			...item,
+			isShort,
+		};
+	});
+
+	const videoDetails = await Promise.all(videoDetailsPromises);
+
+	// Filter out Shorts
+	const filteredVideos = videoDetails
+		.filter((item) => !item.isShort)
+		.slice(0, 9);
+
+	return filteredVideos.map((item) => ({
+		title: item.snippet.title,
+		url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
+		thumbnail: item.snippet.thumbnails.medium.url,
+	}));
 }
 
 async function updateReadme() {
